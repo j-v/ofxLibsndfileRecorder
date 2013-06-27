@@ -6,7 +6,7 @@ ofxLibsndFileRecorder::ofxLibsndFileRecorder(){
 }
 
 
-void ofxLibsndFileRecorder::setup(string fileName, int sampleRate_, int numChannels_){
+void ofxLibsndFileRecorder::setup(string fileName, int lengthMs, int sampleRate_, int numChannels_){
 	
 	sampleRate=sampleRate_;
 	numChannels = numChannels_;
@@ -14,13 +14,15 @@ void ofxLibsndFileRecorder::setup(string fileName, int sampleRate_, int numChann
 	audioFormat=SF_FORMAT_WAV | SF_FORMAT_PCM_16;
 	
 	//cout << "SND PATH: "<<ofToDataPath(fileName,true)<<"\n";
-	outFile=new SndfileHandle(ofToDataPath(fileName,true),SFM_RDWR, audioFormat, numChannels, sampleRate);
+	outFile=new SndfileHandle(fileName, SFM_RDWR, audioFormat, numChannels, sampleRate);
 	if(!outFile){
-		cout<<"SndFileHandl outfile creation error\n";
+		cout<<"SndFileHandle outfile creation error\n";
 		initialized=false;
 	}
 	else{
-		recordingBuffer=(float*)realloc(recordingBuffer, sizeof(float));
+		//recordingBuffer=(float*)realloc(recordingBuffer, sizeof(float));
+		totalRecordingSize = sampleRate * numChannels * (int)((float)lengthMs / 1000.f);
+		recordingBuffer = (float*)malloc(sizeof(float) * totalRecordingSize);
 		initialized=true;	
 	}
 }
@@ -41,13 +43,24 @@ void  ofxLibsndFileRecorder::setFormat(int format){
 	audioFormat=format;
 }
 
-void ofxLibsndFileRecorder::addSamples(float* &input, int numSamples){
+int ofxLibsndFileRecorder::addSamples(float* &input, int numSamples){
 	if(initialized){
-		recordingSize+=numSamples*numChannels;
-		recordingBuffer=(float*)realloc(recordingBuffer, recordingSize*sizeof(float));
-		//cout << recordingSize <<" "<<numSamples <<" "<<numChannels << ""<< recordingSize*sizeof(float)<<"\n";
-		memcpy(&recordingBuffer[recordingSize-numSamples*numChannels], input, numSamples*numChannels*sizeof(float)); 	
+		int new_samples = numSamples * numChannels;
+		if (recordingSize + new_samples > totalRecordingSize)
+			return 1; // no space left to record. TODO better error code 
+
+		memcpy(&recordingBuffer[recordingSize], input, new_samples*sizeof(float));
+		recordingSize+=new_samples;
+
+		return 0;
+
+		//// using realloc over and over here seems like a bad idea	
+		//// TODO switch to using buffers that gradually get filled up
+		//recordingBuffer=(float*)realloc(recordingBuffer, recordingSize*sizeof(float));
+		////cout << recordingSize <<" "<<numSamples <<" "<<numChannels << ""<< recordingSize*sizeof(float)<<"\n";
+		//memcpy(&recordingBuffer[recordingSize-numSamples*numChannels], input, numSamples*numChannels*sizeof(float)); 	
 	}
+	return 1; //  not initiliazed TODO err code
 }
 
 void ofxLibsndFileRecorder::finalize(){

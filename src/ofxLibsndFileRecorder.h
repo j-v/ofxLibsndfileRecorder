@@ -6,8 +6,8 @@ class ofxLibsndFileRecorder{
 	public :
 	
 	ofxLibsndFileRecorder();
-	void setup(string fileName, int sampleRate=44100, int numChannels=1);
-	void addSamples(float* &input, int numSamples);
+	void setup(string fileName, int lengthMs, int sampleRate=44100, int numChannels=1);
+	int addSamples(float* &input, int numSamples);
 	
 	
 	
@@ -32,5 +32,6 @@ class ofxLibsndFileRecorder{
 		string			suffix;
 		float			*recordingBuffer;
 		int				recordingSize;
+		int				totalRecordingSize;
 	
 };
